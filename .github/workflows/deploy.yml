@@ -54,6 +54,46 @@ jobs:
         with:
           channel: stable
       - run: flutter create --platforms=web,android .
+      - name: Enable core library desugaring for flutter_local_notifications
+        run: |
+          python3 - <<'EOF'
+          import pathlib
+          kt = pathlib.Path('android/app/build.gradle.kts')
+          groovy = pathlib.Path('android/app/build.gradle')
+          path = kt if kt.exists() else groovy
+          text = path.read_text()
+          if 'coreLibraryDesugaring' not in text:
+              if kt.exists():
+                  text = text.replace(
+                      'compileOptions {',
+                      'compileOptions {\n        isCoreLibraryDesugaringEnabled = true',
+                      1,
+                  )
+                  if 'dependencies {' in text:
+                      text = text.replace(
+                          'dependencies {',
+                          'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")',
+                          1,
+                      )
+                  else:
+                      text += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+              else:
+                  text = text.replace(
+                      'compileOptions {',
+                      'compileOptions {\n        coreLibraryDesugaringEnabled true',
+                      1,
+                  )
+                  if 'dependencies {' in text:
+                      text = text.replace(
+                          'dependencies {',
+                          'dependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"',
+                          1,
+                      )
+                  else:
+                      text += '\n\ndependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"\n}\n'
+          path.write_text(text)
+          print('patched', path)
+          EOF
       - run: flutter pub get
       - run: dart run flutter_launcher_icons
       - run: flutter build apk --release
