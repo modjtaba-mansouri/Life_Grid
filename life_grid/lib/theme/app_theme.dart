@@ -15,13 +15,13 @@ class AppColors {
   static const danger = Color(0xFFFF5D5D);
   static const warn = Color(0xFFF0B429);
 
-  // 5-stage rating scale colors: Disaster -> Wonderful
+    // 5-stage rating scale colors: Disaster -> Wonderful
   static const stageColors = <Color>[
-    danger, // 1 Disaster
-    Color(0xFFE07B4F), // 2 Bad (between danger and warn)
-    warn, // 3 Neutral
-    Color(0xFF7FD98A), // 4 Good
-    accent, // 5 Wonderful
+    danger, // 1 Disaster — red
+    Color(0xFFE08A3C), // 2 Bad — orange
+    Color(0xFFAEB8B8), // 3 Neutral — gray/white
+    Color(0xFF7FD98A), // 4 Good — light green
+    Color(0xFF1E8F4E), // 5 Wonderful — dark green
   ];
 
   static const stageLabels = <String>[
