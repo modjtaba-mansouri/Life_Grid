@@ -3,6 +3,6 @@
 /// Firestore rules described in the README. Nothing else in the app
 /// needs to change once these are set.
 class FirebaseConfig {
-  static const projectId = 'YOUR_PROJECT_ID';
-  static const apiKey = 'YOUR_WEB_API_KEY';
+  static const projectId = 'life-grid-8698';
+  static const apiKey = 'AIzaSyC-UsFRFVDCjd0riWiO5AGhEZQuv7Ysfro';
 }
