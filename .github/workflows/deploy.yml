@@ -73,6 +73,30 @@ jobs:
         with:
           channel: stable
       - run: flutter create --platforms=web,android .
+      - name: Add required Android permissions (INTERNET, notifications)
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re
+          manifest = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+
+          permissions = [
+              '<uses-permission android:name="android.permission.INTERNET"/>',
+              '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>',
+              '<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>',
+              '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>',
+          ]
+          missing = [
+              p for p in permissions
+              if re.search(r'android:name="([^"]+)"', p).group(1) not in text
+          ]
+          if missing:
+              manifest_tag_end = text.index('>', text.index('<manifest')) + 1
+              insertion = '\n' + '\n'.join('    ' + p for p in missing)
+              text = text[:manifest_tag_end] + insertion + text[manifest_tag_end:]
+              manifest.write_text(text)
+          print('Permissions added:', missing if missing else '(all already present)')
+          EOF
       - name: Set app label to "Life Grid"
         run: |
           python3 - <<'EOF'
