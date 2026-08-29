@@ -26,6 +26,22 @@ jobs:
         with:
           channel: stable
       - run: flutter create --platforms=web,android .
+      - name: Set app title to "Life Grid"
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re, json
+          idx = pathlib.Path('web/index.html')
+          text = idx.read_text()
+          text = re.sub(r'<title>.*?</title>', '<title>Life Grid</title>', text, count=1)
+          idx.write_text(text)
+
+          manifest = pathlib.Path('web/manifest.json')
+          data = json.loads(manifest.read_text())
+          data['name'] = 'Life Grid'
+          data['short_name'] = 'Life Grid'
+          manifest.write_text(json.dumps(data, indent=2))
+          print('patched web title/manifest')
+          EOF
       - run: flutter pub get
       - run: dart run flutter_launcher_icons
       - run: flutter build web --base-href /${{ github.event.repository.name }}/
@@ -54,6 +70,43 @@ jobs:
         with:
           channel: stable
       - run: flutter create --platforms=web,android .
+      - name: Set app label to "Life Grid"
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re
+
+          manifest = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          match = re.search(r'android:label="([^"]*)"', text)
+          print('Manifest label before:', match.group(0) if match else '(not found)')
+
+          if match and match.group(1) == '@string/app_name':
+              strings_path = pathlib.Path('android/app/src/main/res/values/strings.xml')
+              if strings_path.exists():
+                  s = strings_path.read_text()
+                  if 'name="app_name"' in s:
+                      s = re.sub(
+                          r'<string name="app_name">[^<]*</string>',
+                          '<string name="app_name">Life Grid</string>',
+                          s,
+                      )
+                  else:
+                      s = s.replace('</resources>', '    <string name="app_name">Life Grid</string>\n</resources>')
+                  strings_path.write_text(s)
+              else:
+                  strings_path.parent.mkdir(parents=True, exist_ok=True)
+                  strings_path.write_text(
+                      '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+                      '    <string name="app_name">Life Grid</string>\n</resources>\n'
+                  )
+              print('patched strings.xml app_name instead (manifest used @string/app_name)')
+          else:
+              new_text = re.sub(r'android:label="[^"]*"', 'android:label="Life Grid"', text, count=1)
+              if new_text == text:
+                  raise SystemExit('ERROR: could not find android:label in AndroidManifest.xml to patch')
+              manifest.write_text(new_text)
+              print('patched AndroidManifest label directly')
+          EOF
       - name: Enable core library desugaring for flutter_local_notifications
         run: |
           python3 - <<'EOF'
@@ -94,10 +147,50 @@ jobs:
           path.write_text(text)
           print('patched', path)
           EOF
+      - name: Sign release builds with a persistent key (so updates install over old versions)
+        run: |
+          python3 - <<'EOF'
+          import pathlib
+          kt = pathlib.Path('android/app/build.gradle.kts')
+          groovy = pathlib.Path('android/app/build.gradle')
+          path = kt if kt.exists() else groovy
+          text = path.read_text()
+
+          if kt.exists():
+              signing_block = '''    signingConfigs {
+          create("release") {
+              storeFile = file("release.keystore")
+              storePassword = "LifeGrid_2026_kS"
+              keyAlias = "life_grid"
+              keyPassword = "LifeGrid_2026_kS"
+          }
+      }
+      '''
+              text = text.replace('    buildTypes {', signing_block + '    buildTypes {', 1)
+              text = text.replace(
+                  'signingConfig = signingConfigs.getByName("debug")',
+                  'signingConfig = signingConfigs.getByName("release")',
+              )
+          else:
+              signing_block = '''    signingConfigs {
+          release {
+              storeFile file("release.keystore")
+              storePassword "LifeGrid_2026_kS"
+              keyAlias "life_grid"
+              keyPassword "LifeGrid_2026_kS"
+          }
+      }
+      '''
+              text = text.replace('    buildTypes {', signing_block + '    buildTypes {', 1)
+              text = text.replace('signingConfigs.debug', 'signingConfigs.release')
+
+          path.write_text(text)
+          print('patched signing config in', path)
+          EOF
       - run: flutter pub get
       - run: dart run flutter_launcher_icons
-      - run: flutter build apk --release
+      - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
           name: life-grid-android
-          path: life_grid/build/app/outputs/flutter-apk/app-release.apk
+          path: life_grid/build/app/outputs/flutter-apk/app-release-arm64-v8a.apk
