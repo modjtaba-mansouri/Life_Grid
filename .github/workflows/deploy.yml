@@ -81,6 +81,7 @@ jobs:
           print('Manifest label before:', match.group(0) if match else '(not found)')
 
           if match and match.group(1) == '@string/app_name':
+              # Label is a reference to strings.xml — patch that instead.
               strings_path = pathlib.Path('android/app/src/main/res/values/strings.xml')
               if strings_path.exists():
                   s = strings_path.read_text()
@@ -157,30 +158,36 @@ jobs:
           text = path.read_text()
 
           if kt.exists():
-              signing_block = '''    signingConfigs {
-          create("release") {
-              storeFile = file("release.keystore")
-              storePassword = "LifeGrid_2026_kS"
-              keyAlias = "life_grid"
-              keyPassword = "LifeGrid_2026_kS"
-          }
-      }
-      '''
+              signing_lines = [
+                  '    signingConfigs {',
+                  '        create("release") {',
+                  '            storeFile = file("release.keystore")',
+                  '            storePassword = "LifeGrid_2026_kS"',
+                  '            keyAlias = "life_grid"',
+                  '            keyPassword = "LifeGrid_2026_kS"',
+                  '        }',
+                  '    }',
+                  '',
+              ]
+              signing_block = '\n'.join(signing_lines)
               text = text.replace('    buildTypes {', signing_block + '    buildTypes {', 1)
               text = text.replace(
                   'signingConfig = signingConfigs.getByName("debug")',
                   'signingConfig = signingConfigs.getByName("release")',
               )
           else:
-              signing_block = '''    signingConfigs {
-          release {
-              storeFile file("release.keystore")
-              storePassword "LifeGrid_2026_kS"
-              keyAlias "life_grid"
-              keyPassword "LifeGrid_2026_kS"
-          }
-      }
-      '''
+              signing_lines = [
+                  '    signingConfigs {',
+                  '        release {',
+                  '            storeFile file("release.keystore")',
+                  "            storePassword 'LifeGrid_2026_kS'",
+                  "            keyAlias 'life_grid'",
+                  "            keyPassword 'LifeGrid_2026_kS'",
+                  '        }',
+                  '    }',
+                  '',
+              ]
+              signing_block = '\n'.join(signing_lines)
               text = text.replace('    buildTypes {', signing_block + '    buildTypes {', 1)
               text = text.replace('signingConfigs.debug', 'signingConfigs.release')
 
