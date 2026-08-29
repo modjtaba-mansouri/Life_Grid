@@ -200,4 +200,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: life-grid-android
-          path: life_grid/build/app/outputs/flutter-apk/app-release-arm64-v8a.apk
+          path: life_grid/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
