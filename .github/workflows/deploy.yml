@@ -39,6 +39,9 @@ jobs:
           data = json.loads(manifest.read_text())
           data['name'] = 'Life Grid'
           data['short_name'] = 'Life Grid'
+          data['display'] = 'standalone'
+          data['background_color'] = '#050607'
+          data['theme_color'] = '#050607'
           manifest.write_text(json.dumps(data, indent=2))
           print('patched web title/manifest')
           EOF
