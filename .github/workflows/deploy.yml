@@ -25,6 +25,19 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Generate app version file from pubspec.yaml
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re
+          pubspec = pathlib.Path('pubspec.yaml').read_text()
+          match = re.search(r'^version:\s*([^\s+]+)', pubspec, re.MULTILINE)
+          version = match.group(1) if match else '0.0.0'
+          pathlib.Path('lib/config').mkdir(parents=True, exist_ok=True)
+          pathlib.Path('lib/config/app_version.dart').write_text(
+              f"const String kAppVersion = '{version}';\n"
+          )
+          print('App version:', version)
+          EOF
       - run: flutter create --platforms=web,android .
       - name: Set app title to "Life Grid"
         run: |
@@ -48,6 +61,16 @@ jobs:
       - run: flutter pub get
       - run: dart run flutter_launcher_icons
       - run: flutter build web --base-href /${{ github.event.repository.name }}/
+      - name: Publish version.json alongside the web build
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re, json
+          pubspec = pathlib.Path('pubspec.yaml').read_text()
+          match = re.search(r'^version:\s*([^\s+]+)', pubspec, re.MULTILINE)
+          version = match.group(1) if match else '0.0.0'
+          pathlib.Path('build/web/version.json').write_text(json.dumps({'version': version}))
+          print('Published version.json:', version)
+          EOF
       - uses: actions/upload-pages-artifact@v3
         with:
           path: life_grid/build/web
@@ -72,6 +95,19 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Generate app version file from pubspec.yaml
+        run: |
+          python3 - <<'EOF'
+          import pathlib, re
+          pubspec = pathlib.Path('pubspec.yaml').read_text()
+          match = re.search(r'^version:\s*([^\s+]+)', pubspec, re.MULTILINE)
+          version = match.group(1) if match else '0.0.0'
+          pathlib.Path('lib/config').mkdir(parents=True, exist_ok=True)
+          pathlib.Path('lib/config/app_version.dart').write_text(
+              f"const String kAppVersion = '{version}';\n"
+          )
+          print('App version:', version)
+          EOF
       - run: flutter create --platforms=web,android .
       - name: Add required Android permissions (INTERNET, notifications)
         run: |
@@ -228,3 +264,23 @@ jobs:
         with:
           name: life-grid-android
           path: life_grid/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+  publish-release:
+    needs: build-android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: life-grid-android
+          path: release-apk
+      - name: Publish/replace the "latest" GitHub Release with this APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag --repo ${{ github.repository }} || true
+          gh release create latest release-apk/app-arm64-v8a-release.apk \
+            --title "Latest Build" \
+            --notes "Automatically published by CI on every push to main. Always the current version." \
+            --repo ${{ github.repository }}
